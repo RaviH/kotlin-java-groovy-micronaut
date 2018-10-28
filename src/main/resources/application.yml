@@ -1,0 +1,9 @@
+micronaut:
+  application:
+    name: helloworldk1
+  server:
+    port: 8080
+
+hello:
+  world:
+    url: http://127.0.0.1:8080
