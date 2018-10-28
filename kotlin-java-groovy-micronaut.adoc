@@ -1,0 +1,194 @@
+---
+. To make Kotlin, Java and Micronaut work together, you need `kotlin-maven-plugin` and `maven-compiler-plugin` as shown below.
+
+. Also, you need `gmavenplus-plugin` to compile groovy code. 
+
+. Finally, you need `maven-surefire-plugin` to execute test(s).
+
+---
+
+.pom.xml (`kotlin-maven-plugin` section responsible for kotlin, java and micronaut mix)
+[source,xml]
+----
+<plugin>
+    <groupId>org.jetbrains.kotlin</groupId>
+    <artifactId>kotlin-maven-plugin</artifactId>
+    <version>${kotlinVersion}</version>
+    
+    <configuration>
+        <compilerPlugins>
+            <plugin>all-open</plugin>
+        </compilerPlugins>
+        <pluginOptions>
+            <option>all-open:annotation=io.micronaut.aop.Around</option> 
+        </pluginOptions>
+    </configuration>
+    
+    <executions>
+        <execution>                                                     // <1>
+            <id>kapt</id>
+            <goals>
+                <goal>kapt</goal>
+            </goals>
+            <configuration>
+                <sourceDirs>
+                    <sourceDir>src/main/kotlin</sourceDir>              // <2>
+                    <sourceDir>src/main/java</sourceDir>                // <3>
+                </sourceDirs>
+                <annotationProcessorPaths>                      
+                    <annotationProcessorPath>
+                        <groupId>io.micronaut</groupId>
+                        <artifactId>micronaut-inject-java</artifactId>
+                        <version>${micronaut.version}</version>
+                    </annotationProcessorPath>
+                    <annotationProcessorPath>
+                        <groupId>io.micronaut</groupId>
+                        <artifactId>micronaut-validation</artifactId>
+                        <version>${micronaut.version}</version>
+                    </annotationProcessorPath>
+                </annotationProcessorPaths>
+            </configuration>
+        </execution>
+       
+        <execution>                                                     // <4>
+            <id>compile</id>
+            <goals>
+                <goal>compile</goal>
+            </goals>
+            <configuration>
+                <sourceDirs>
+                    <sourceDir>src/main/kotlin</sourceDir>
+                </sourceDirs>
+            </configuration>
+        </execution>
+        
+        <execution>                                                     // <5>
+            <id>test-kapt</id>
+            <goals>
+                <goal>test-kapt</goal>
+            </goals>
+            <configuration>
+                <sourceDirs>
+                    <sourceDir>src/test/kotlin</sourceDir>
+                </sourceDirs>
+                <annotationProcessorPaths>
+                    <annotationProcessorPath>
+                        <groupId>io.micronaut</groupId>
+                        <artifactId>micronaut-inject-java</artifactId>
+                        <version>${micronaut.version}</version>
+                    </annotationProcessorPath>
+                    <annotationProcessorPath>
+                        <groupId>io.micronaut</groupId>
+                        <artifactId>micronaut-validation</artifactId>
+                        <version>${micronaut.version}</version>
+                    </annotationProcessorPath>
+                </annotationProcessorPaths>
+            </configuration>
+        </execution>
+        
+        <execution>
+            <id>test-compile</id>
+            <goals>
+                <goal>test-compile</goal>
+            </goals>
+            <configuration>
+                <sourceDirs>
+                    <sourceDir>src/test/kotlin</sourceDir>
+                    <sourceDir>target/generated-sources/kapt/test</sourceDir>
+                </sourceDirs>
+            </configuration>
+        </execution>
+    </executions>
+    
+    <dependencies>
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-maven-allopen</artifactId>
+            <version>${kotlinVersion}</version>
+        </dependency>
+    </dependencies>
+</plugin>
+
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-compiler-plugin</artifactId>
+    <version>3.7.0</version>
+    <configuration>
+        <proc>none</proc>
+        <source>1.8</source>
+        <target>1.8</target>
+    </configuration>
+    <executions>
+        <execution>
+            <id>default-compile</id>                                    // <6>
+            <phase>none</phase>
+        </execution>
+        <execution>
+            <id>default-testCompile</id>                                // <7>
+            <phase>none</phase>
+        </execution>
+        <execution>
+            <id>java-compile</id>
+            <phase>compile</phase>
+            <goals>
+                <goal>compile</goal>
+            </goals>
+        </execution>
+        <execution>
+            <id>java-test-compile</id>
+            <phase>test-compile</phase>
+            <goals>
+                <goal>testCompile</goal>
+            </goals>
+        </execution>
+    </executions>
+</plugin>
+----
+
+<1> Kapt compiler plugin provides support for annotation processors. `micronaut` does it's work at compile time. Hence, `kapt` plugin is necessary.
+<2> Kotlin source location
+<3> Java source location
+<4> For compile goal provide `kotlin` source location
+<5> `test-kapt` is only necessary when writing tests in `kotlin`.
+
+.pom.xml (`gmavenplus-plugin` section responsible for groovy test code compilation)
+[source,xml]
+----
+            <plugin>
+                <groupId>org.codehaus.gmavenplus</groupId>
+                <artifactId>gmavenplus-plugin</artifactId>
+                <version>1.6.1</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>addTestSources</goal>             // <1>
+                            <goal>compileTests</goal>               // <2>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+----
+
+<1> Add test sources
+<2> Compile tests.
+
+.pom.xml (`maven-surefire-plugin` responsible for executing unit tests)
+
+[source,xml]
+----
+<plugin>
+    <groupId>org.apache.maven.plugins</groupId>
+    <artifactId>maven-surefire-plugin</artifactId>
+    <version>2.22.0</version>
+    <configuration>
+        <useFile>false</useFile>
+        <includes>
+            <include>**/*Spec.*</include>                       // <1>
+            <include>**/*Test.*</include>                       // <2>
+        </includes>
+    </configuration>
+</plugin>
+----
+
+<1> Execute any class that ends with `Spec` or 
+<2> Execute any class that ends with `Test`
